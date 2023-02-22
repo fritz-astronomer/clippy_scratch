@@ -1,0 +1,19 @@
+{
+  "name": "my-lib",
+  "type": "module",
+  "files": [
+    "dist"
+  ],
+  "main": "./dist/my-lib.umd.cjs",
+  "module": "./dist/my-lib.js",
+  "exports": {
+    ".": {
+      "import": "./dist/my-lib.js",
+      "require": "./dist/my-lib.umd.cjs"
+    }
+  },
+  "dependencies": {
+    "@vitejs/plugin-vue": "^4.0.0",
+    "@vitejs/plugin-vue-jsx": "^3.0.0"
+  }
+}

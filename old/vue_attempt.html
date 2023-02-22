@@ -1,0 +1,67 @@
+<!--suppress HtmlUnknownTag -->
+<link href="https://cdn.jsdelivr.net/npm/vuetify@3.1.5/dist/vuetify.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/@mdi/font@4.x/css/materialdesignicons.min.css" rel="stylesheet"/>
+
+<script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/vuetify@3.1.5/dist/vuetify.min.js"></script>
+<script src="https://polyfill.io/v3/polyfill.min.js?features=IntersectionObserver,ResizeObserver,WebAnimations,Object.fromEntries,Array.prototype.at"></script>
+<!--older browser support for vuetify-->
+
+<script type="text/x-template" id="app-template">
+    <v-app :color="bg">
+        <!--        <v-card>-->
+        <!--            <v-layout>-->
+        <v-navigation-drawer
+                expand-on-hover
+                rail
+        >
+            <v-list>
+                <v-list-item
+                        prepend-avatar="https://randomuser.me/api/portraits/women/85.jpg"
+                        title="Sandra Adams"
+                        subtitle="sandra_a88@gmailcom"
+                ></v-list-item>
+            </v-list>
+
+            <v-divider></v-divider>
+
+            <v-list density="compact" nav>
+                <v-list-item prepend-icon="mdi-folder" title="My Files" value="myfiles"></v-list-item>
+                <v-list-item prepend-icon="mdi-account-multiple" title="Shared with me"
+                             value="shared"></v-list-item>
+                <v-list-item prepend-icon="mdi-star" title="Starred" value="starred"></v-list-item>
+            </v-list>
+        </v-navigation-drawer>
+
+        <!--        <v-main style="height: 250px"></v-main>-->
+        <!--        </v-layout>-->
+        <!--        </v-card>-->
+    </v-app>
+</script>
+<div id="app" style="display: block; position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 99 !important;">
+    <!--    <p>[[ message ]]</p>-->
+</div>
+
+<script type="module">
+    const {createApp} = Vue
+    const {createVuetify} = Vuetify
+    const vuetify = createVuetify({
+        theme: {
+            defaultTheme: 'dark'
+        }
+    })
+
+    const app = createApp({
+        template: "#app-template",
+        delimiters: ['[[', ']]'],
+        data() {
+            return {
+                message: 'Hello Vue!',
+                drawer: null
+            }
+        }
+    })
+    app.use(vuetify).mount('#app')
+    $("header div.navbar").css({'style': 'z-index: 1'});
+</script>

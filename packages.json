@@ -1,0 +1,8 @@
+{
+  "name": "clippy_scratch",
+  "version": "1.0.0",
+  "dependencies": {
+    "@algolia/autocomplete-js": "^1.8.2",
+    "algoliasearch": "^4.14.3",
+  }
+}

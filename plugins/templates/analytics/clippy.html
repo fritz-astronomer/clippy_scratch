@@ -1,0 +1,412 @@
+<!--suppress HtmlUnknownAttribute, XmlUnboundNsPrefix -->
+
+<!--UI Kit-->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/uikit@3.15.24/dist/css/uikit.min.css"/>
+<script src="https://cdn.jsdelivr.net/npm/uikit@3.15.24/dist/js/uikit.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/uikit@3.15.24/dist/js/uikit-icons.min.js"></script>
+
+<!-- calendly -->
+<link href="https://assets.calendly.com/assets/external/widget.css" rel="stylesheet">
+<script src="https://assets.calendly.com/assets/external/widget.js" type="text/javascript" async></script>
+
+<!--lodash-->
+<script src="https://unpkg.com/lodash@4.17.21/lodash.min.js"></script>
+
+<!-- algolia search -->
+<!--suppress CssUnusedSymbol -->
+<style>
+    .algolia-docsearch-suggestion--highlight {
+        background-color: RGBA(250, 160, 90, .5);
+        padding: 0.1em 0;
+    }
+</style>
+
+<script type="module">
+    import {createApp} from 'https://unpkg.com/petite-vue?module';
+    import algoliasearch
+        from "https://cdn.jsdelivr.net/npm/algoliasearch@4.14.3/dist/algoliasearch-lite.esm.browser.js";
+
+    let $ = window['jQuery']; // already imported by Airflow
+
+    const algoliasearch_app_id = 'TTRQ0VJY4D';
+    const algoliasearch_api_key = '99354995bfad26ed950bdb701bc56b6b';
+    const algoliasearch_index_name = 'published-docs';
+
+    const algoliasearch_client = algoliasearch(algoliasearch_app_id, algoliasearch_api_key);
+    const algoliasearch_index = algoliasearch_client.initIndex(algoliasearch_index_name);
+
+    const fade_away = ["uk-animation-fade", "uk-animation-reverse"];
+    const slide_in = ["uk-animation-slide-right"];
+    const shake = ["uk-animation-shake"];
+    const big_shrink_icon = 'icon: shrink; ratio: 1.25';
+    const big_expand_icon = 'icon: expand; ratio: 1.25';
+    let first_time = true;
+
+    const tags_to_search_for = ["snowflake"];
+
+
+    // function VideoPanel(props) {
+    //     return {
+    //         $template: '#video-panel-template',
+    //         provider: props.video_provider,
+    //         get url() {
+    //             return {
+    //                 "snowflake": "https://www.youtube.com/embed/okMiskKGvVI"
+    //             }[this.provider]
+    //         },
+    //         mounted() {
+    //             console.log("### VIDEO MOUNTED ####")
+    //         }
+    //     }
+    // }
+
+    // function RegistryPanel(props) {
+    //     return {
+    //         $template: '#registry-panel-template',
+    //         provider: props.provider,
+    //         get url() {
+    //             return {
+    //                 "snowflake": "https://registry.astronomer.io/providers/snowflake"
+    //             }[this.provider]
+    //         }
+    //     }
+    // }
+
+    console.log("#### CREATING ####")
+    createApp({
+        $delimiters: ['[[', ']]'],
+
+        // VideoPanel: VideoPanel,
+        // RegistryPanel,
+
+        found_tags: [],
+        found_providers: [],
+        provider: "apache-airflow-providers-snowflake",
+        docs_content: "",
+        search_results: [],
+        search: "",
+        subtab: "",
+
+        get get_description() {
+            for (const found_provider of this.found_providers) {
+                if (found_provider.package_name === this.provider) {
+                    return found_provider.description
+                }
+            }
+            return "Description"
+        },
+        setSubTab(value){
+            this.subtab = value;
+        },
+        fetch_search() {
+            let self = this;
+            algoliasearch_index.search(this.search, {
+                facetFilters: [["language:en"], ["docusaurus_tag:default", "docusaurus_tag:docs-software-current", "docusaurus_tag:docs-default-current", "docusaurus_tag:docs-learn-current"]],
+                hitsPerPage: 20,
+            }).then(({hits}) => {
+                console.log(hits);
+                self.search_results = hits;
+                UIkit.modal("#search-modal").toggle();
+            });
+        },
+        prettyProvider(value) {
+            return value
+                .replace('apache-airflow-providers', '')
+                .replace('airflow-provider', '')
+                .replace(/^[-_]*(.)/, (_, c) => c.toUpperCase())
+                .replace(/[-_]+(.)/g, (_, c) => ' ' + c.toUpperCase())
+                .toUpperCase()
+        },
+        getOptionalValue(value) {
+            // used to return an empty string instead of undefined when used with v-html="..."
+            return value ? value : "";
+        },
+        mounted() {
+            console.log("#### MOUNTED ####");
+            const current_page_content = $("body > div.container")[0].innerHTML;
+
+            for (const tag in tags_to_search_for) {
+                if (new RegExp(tag, 'i').test(current_page_content)) {
+                    this.found_tags.concat(tag);
+                }
+            }
+
+            // TODO - high level
+            // TODO auth handshake to get cust info
+            // TODO scan `page` and have an "On This Page"
+            // TODO scan ``/providers` and have an "On This Airflow"
+
+
+            // TODO - LOGIN
+            // TODO - get centralized customer info (CICD, Secrets, Migration, etc)
+            // https://github.com/astronomer/starship/blob/master/astronomer-starship/starship/templates/components/token_modal.html
+            // "get token"  <a href="https://cloud.astronomer.io/token"
+            // paste field, record in storage
+            // localStorage.setItem('YourItem', response.data)
+            // localStorage.getItem('YourItem')
+            // sessionStorage.setItem('mode','dark');
+
+            // TODO - inject docs
+            // turn this into a component, that takes a URL
+            fetch("https://docs.astronomer.io/astro/set-up-ci-cd").then(
+                (response) => response.text().then(
+                    (data) => this.docs_content = new DOMParser()
+                        .parseFromString(
+                            // convert relative links to absolute links back to the docs
+                            data.replaceAll('href="/astro/', 'href="https://docs.astronomer.io/astro/'),
+                            "text/html"
+                        )
+                        .querySelector("#docusaurus_skipToContent_fallback article div.markdown")
+                        .outerHTML
+                )
+            );
+
+            // TODO - lookup and quick docs
+
+            // TODO - scan page for keywords
+
+            // TODO - other maybe interesting routes?
+            // http://localhost:8080/api/v1/config
+            // http://localhost:8080/api/v1/eventLogs
+
+            // Fetch /providers installed locally
+            fetch(window.location.origin + '/api/v1/providers')
+                .then((response) => {
+                    if (response.ok) {
+                        response.json().then((data) => {
+                            if ("providers" in data) {
+                                console.log(data);
+                                this.found_providers = data['providers'];
+                                console.log("found " + data['providers'].length + " providers");
+                            }
+                        })
+                    } else {
+                        console.log("Error requesting - /api/v1/providers")
+                    }
+                });
+        }
+    }).mount('#app');
+
+    // UIKit stuff - place the sidebar correctly, animate open+close button
+    function move_sidebar_under_header(header_selector = ".navbar", panel_id = "clippy-main") {
+        const header_height = $(".navbar")[0].clientHeight + "px";
+        let panel = document.getElementById(panel_id);
+        panel.style.top = header_height;
+    }
+
+    $(window).resize(function () {
+        move_sidebar_under_header();
+    });
+
+    UIkit.util.ready(function () {
+        move_sidebar_under_header();
+
+        const clippy_container = $("#clippy-container")
+        const clippy_main = $("#clippy-main")
+        const fullscreen_button = document.getElementById("fullscreen-button")
+        const rocketship = $("#rocketship");
+
+        // Rocketship - animate and toggle menu
+        rocketship.attr("hidden", false);
+        rocketship.addClass(slide_in.concat(shake));
+        UIkit.util.on(clippy_container, 'beforeshow', function () {
+            let remove = rocketship.hasClass(shake[0]) ? slide_in.concat(shake) : slide_in;
+            rocketship.removeClass(remove);
+            rocketship.addClass(fade_away);
+            first_time = false;
+        });
+        UIkit.util.on(clippy_container, 'hidden', function () {
+            if (!first_time) {
+                rocketship.removeClass(fade_away);
+                rocketship.addClass(slide_in);
+            }
+        });
+
+        // Fullscreen button - expand and shrink content
+        UIkit.util.on(fullscreen_button, 'click', function () {
+            if (fullscreen_button.getAttribute('uk-icon').includes("expand")) {
+                clippy_main.addClass("uk-width-5-6");
+                fullscreen_button.setAttribute('uk-icon', big_shrink_icon);
+            } else {
+                clippy_main.removeClass("uk-width-5-6");
+                fullscreen_button.setAttribute('uk-icon', big_expand_icon);
+            }
+        });
+    });
+</script>
+
+<button id="rocketship" type="button" uk-toggle="target: #clippy-container"
+        class="uk-button uk-button-link uk-position-center-right uk-margin-small-right" hidden>
+    <svg class="icon" width="75px" height="100px" viewBox="0 0 1024 1024"
+         version="1.1"
+         xmlns="http://www.w3.org/2000/svg" fill="#000000">
+        <g id="SVGRepo_bgCarrier" stroke-width="0"></g>
+        <g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g>
+        <g id="SVGRepo_iconCarrier">
+            <path d="M662.72 462.784l136.448 169.408v173.248l-136.448-48.32zM342.72 457.344L206.272 626.816v173.248l136.448-48.384z"
+                  fill="#3A7EB9"></path>
+            <path d="M570.688 418.688l-142.848 1.152a266.496 266.496 0 0 1-20.288-0.576l3.712 448.64c0.256 28.928 94.272 130.048 94.272 130.048s93.888-102.656 93.632-131.584l-3.712-448.96a344.64 344.64 0 0 1-24.768 1.28z"
+                  fill="#D48171"></path>
+            <path d="M531.456 599.296l-63.04 0.576c-3.008 0-5.952-0.064-8.96-0.384l2.176 257.792c0.128 16.64 41.728 74.816 41.728 74.816s41.344-58.944 41.28-75.52l-2.176-257.92c-3.648 0.384-7.296 0.64-11.008 0.64z"
+                  fill="#E9DF92"></path>
+            <path d="M554.304 93.568a324.352 324.352 0 0 0-110.592 1.728L342.72 240.768v584.512c13.824-0.96 27.968-1.536 42.368-1.536h245.248c11.84 0 23.36 0.384 34.816 1.024V253.312L554.304 93.568z"
+                  fill="#B5D5EB"></path>
+            <path d="M541.44 94.144L500.416 35.008l-45.696 59.136v29.504h89.024v-29.504zM459.456 288.64h88.96v88.896h-88.96zM459.456 467.456h88.96v88.96h-88.96zM459.456 634.176h88.96v88.896h-88.96zM364.928 788.736h277.76v44.352h-277.76z"
+                  fill="#3A7EB9"></path>
+        </g>
+    </svg>
+</button>
+
+<div id="app">
+    <div id="clippy-container" class="uk-width-expand" uk-offcanvas="flip: true; mode: slide; container: body"
+         @vue:mounted="mounted">
+        <div id="clippy-main" class="uk-offcanvas-bar uk-width-2-5">
+
+            <button id="fullscreen-button"
+                    class="uk-position-top-right uk-margin-small-top uk-margin-medium-right"
+                    type="button" uk-icon="icon: expand; ratio: 1.25"></button>
+            <button id="close-button" class="uk-offcanvas-close uk-close-large" type="button" uk-close></button>
+            <ul uk-tab>
+                <li class="uk-active"><a id="providers" href="">Providers</a></li>
+                <li><a id="docs" href="">Astro Docs</a></li>
+                <li><a id="schedule" href="">Schedule</a></li>
+                <li><a id="login" href="">Login</a></li>
+            </ul>
+            <ul class="uk-switcher">
+
+                <!-- PROVIDERS -->
+                <li id="providers_content">
+                    <div uk-form-custom="target: true">
+                        <select id="provider-dropdown" v-model="provider" class="uk-select uk-form-large"
+                                aria-label="Providers Dropdown">
+                            <option value="" disabled>Please select...</option>
+                            <option v-for="item in found_providers" :value="item.package_name"
+                                    :label="prettyProvider(item.package_name)">
+                            </option>
+                        </select>
+                        <button class="uk-button uk-button-default" type="button" tabindex="-1">
+                            <span uk-icon="icon: list"> </span>
+                            <span class="uk-padding-remove-vertical uk-padding-small"
+                                  id="provider-label">[[ prettyProvider(provider) ]]</span>
+                            <span uk-icon="icon: chevron-down"> </span>
+                        </button>
+                    </div>
+                    <p class="uk-text-meta">[[ get_description ]]</p> - [[ subtab ]]
+                    <hr>
+                    <ul uk-accordion>
+                        <li>
+                            <!-- VIDEO -->
+                            <a class="uk-accordion-title" id="provider-video" :click="setSubTab('video')" href="#provider-video">Video</a>
+                            <div v-if="subtab == 'video'" class="uk-accordion-content uk-padding-small">
+                                <!-- TODO Make this a component -->
+                                <iframe class="uk-width-expand"
+                                        src="https://www.youtube-nocookie.com/embed/MUwPWqaJjvk?autoplay=0&showinfo=0&rel=0&modestbranding=1&playsinline=1"
+                                        allowfullscreen uk-responsive uk-video="autoplay: false"></iframe>
+                            </div>
+                        </li>
+                        <li>
+                            <!-- REGISTRY -->
+                            <a class="uk-accordion-title" id="provider-registry" :click="setSubTab('registry')" href="#provider-registry">Registry</a>
+                            <div v-if="subtab == 'registry'" class="uk-accordion-content uk-padding-small">
+                                <!-- TODO Make this a component -->
+                                <iframe class="uk-width-expand uk-height-viewport"
+                                        src="https://registry.astronomer.io/providers/kubernetes/modules/kubernetespodoperator"></iframe>
+                            </div>
+                        </li>
+                        <li>
+                            <!-- AIRFLOW DOCS -->
+                            <a class="uk-accordion-title" id="provider-airflow-docs" href="#provider-airflow-docs">Airflow
+                                Docs</a>
+                            <div class="uk-accordion-content uk-padding-small">
+                                <!-- TODO Make this a component -->
+                                <iframe class="uk-width-expand uk-height-viewport"
+                                        src="https://airflow.apache.org/docs/apache-airflow-providers-salesforce/stable/connections/salesforce.html"></iframe>
+                            </div>
+                        </li>
+                        <li>
+                            <!-- CONNECTION GUIDE -->
+                            <a class="uk-accordion-title" id="provider-connection-guide"
+                               href="#provider-connection-guide">Connection
+                                Guide</a>
+                            <div class="uk-accordion-content">
+                                <p>Todo</p>
+                            </div>
+                        </li>
+                        <li>
+                            <!-- TUTORIAL -->
+                            <a class="uk-accordion-title" id="provider-tutorial" href="#provider-tutorial">Tutorial</a>
+                            <div class="uk-accordion-content">
+                                <p>Todo</p>
+                            </div>
+                        </li>
+                    </ul>
+                </li>
+
+                <!-- DOCS -->
+                <li id="docs_content">
+                    <nav class="uk-navbar" style="box-shadow: none">
+                        <form class="uk-search uk-search-navbar" @submit.prevent>
+                            <span uk-search-icon class="uk-search-toggle"></span>
+                            <input class="uk-search-input" @keyup.enter="fetch_search()" v-model="search" type="search"
+                                   placeholder="Search docs..." aria-label="">
+                        </form>
+                    </nav>
+                    <hr>
+                    <div class="uk-container">
+                        <span v-html="docs_content"></span>
+                    </div>
+                </li>
+
+                <!-- SCHEDULE -->
+                <li>
+                    <div class="uk-width-expand calendly-inline-widget"
+                         data-url="https://calendly.com/fritz-astronomer/30min"
+                         style="height:630px;"></div>
+                    <!--                    <a href=""-->
+                    <!--                       onclick="Calendly.initPopupWidget({url: 'https://calendly.com/fritz-astronomer/30min?hide_gdpr_banner=1'});return false;">-->
+                    <!--                        Schedule Time with an Astro Data Engineer</a>-->
+                </li>
+
+                <!-- LOGIN -->
+                <li id="login_content">
+                    LOGIN CONTENT
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Search Results Popup -->
+    <div id="search-modal" class="uk-flex-top" uk-modal>
+        <div class="uk-modal-dialog uk-light uk-background-secondary uk-modal-body uk-border-rounded uk-box-shadow-xlarge uk-margin-auto-vertical"
+             uk-overflow-auto>
+            <button class="uk-modal-close-default" type="button" uk-close></button>
+            <h2 class="uk-modal-title">Search Results</h2>
+            <ul class="uk-list uk-list-striped">
+                <template v-for="result in search_results">
+                    <li>
+                        <p class="uk-text-lead">
+                            <template v-for="v in _.filter(result._highlightResult.hierarchy)">
+                                > <span v-html="v.value"></span>
+                            </template>
+                        </p>
+
+                        <p class="uk-text-meta" v-html="getOptionalValue(result?._snippetResult?.content?.value)"></p>
+                        <p>
+                            <button uk-tooltip="Open Link in New Tab"
+                                    class="uk-button uk-border-rounded uk-button-default">
+                                <a :href="result.url">
+                                    <span uk-icon="link"></span>
+                                </a>
+                            </button>
+                            <button uk-tooltip="Open in Sidebar" class="uk-button uk-border-rounded uk-button-default">
+                                <a :href="result.url">
+                                    <span uk-icon="file-text"></span>
+                                </a>
+                            </button>
+                        </p>
+                    </li>
+                </template>
+            </ul>
+        </div>
+    </div>
+</div>
